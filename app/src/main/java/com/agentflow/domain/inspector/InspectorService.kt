@@ -41,16 +41,15 @@ class InspectorService(
             }
             val artifact = artifacts.latest(missionId)
                 ?: error("cannot approve without an implementation plan artifact")
-            val latestRejection = reviews.list(missionId)
+            val rejectedArtifact = reviews.list(missionId)
+                .asSequence()
                 .filter { it.status == ReviewStatus.REJECTED }
-                .maxByOrNull { it.createdAt }
-            if (latestRejection != null) {
-                val artifactAtRejection = artifacts.versions(missionId)
-                    .filter { it.updatedAt < latestRejection.createdAt }
-                    .maxByOrNull { it.version }
-                if (artifactAtRejection != null && artifact.id == artifactAtRejection.id) {
-                    error("approval requires a new implementation plan after the latest rejection")
+                .firstOrNull { review ->
+                    review.rejectedArtifactId == artifact.id &&
+                        review.rejectedArtifactVersion == artifact.version
                 }
+            if (rejectedArtifact != null) {
+                error("approval requires a new implementation plan after the latest rejection")
             }
         }
         val inspector = com.agentflow.domain.agent.AgentDuties.inspector(store.listAgents(mission.projectId))
@@ -60,7 +59,7 @@ class InspectorService(
         val rejectedSoFar = reviews.list(missionId).count { it.status == ReviewStatus.REJECTED }
         if (validated.decision == ReviewStatus.REJECTED && rejectedSoFar >= InspectorReviewLimits.MAX_INSPECTOR_REJECTIONS) {
             val current = store.getMission(missionId)!!
-            val review = buildReview(missionId, inspector.id, ReviewStatus.ESCALATED, validated)
+            val review = buildReview(missionId, inspector.id, ReviewStatus.ESCALATED, validated, null)
             val issues = validated.issues.map { issue ->
                 InspectorIssue(Ids.new(), review.id, issue.severity, "[${issue.category}] ${issue.description}", issue.requiredAction, createdAt = now())
             }
@@ -81,13 +80,24 @@ class InspectorService(
         }
 
         val current = store.getMission(missionId)!!
+        val rejectedArtifact = if (validated.decision == ReviewStatus.REJECTED) {
+            artifacts.latest(missionId)
+        } else {
+            null
+        }
         val nextStatus = when (validated.decision) {
             ReviewStatus.APPROVED -> MissionStatus.APPROVED
             ReviewStatus.REJECTED -> if (current.status == MissionStatus.REVIEWING) MissionStatus.REVISION_REQUIRED else current.status
             ReviewStatus.ESCALATED -> MissionStatus.ESCALATED
             ReviewStatus.PENDING -> current.status
         }
-        val review = buildReview(missionId, inspector.id, validated.decision, validated)
+        val review = buildReview(
+            missionId = missionId,
+            inspectorId = inspector.id,
+            status = validated.decision,
+            validated = validated,
+            rejectedArtifact = rejectedArtifact,
+        )
         val issues = validated.issues.map { issue ->
             InspectorIssue(
                 id = Ids.new(), reviewId = review.id, severity = issue.severity,
@@ -179,10 +189,19 @@ class InspectorService(
         inspectorId: String,
         status: ReviewStatus,
         validated: ValidatedInspectorReview,
+        rejectedArtifact: com.agentflow.domain.model.MissionArtifact?,
     ): InspectorReview = InspectorReview(
-        id = Ids.new(), missionId = missionId, taskId = null, inspectorAgentId = inspectorId,
-        status = status, summary = validated.summary, reason = validated.reason,
-        severity = validated.severity, createdAt = now(),
+        id = Ids.new(),
+        missionId = missionId,
+        taskId = null,
+        inspectorAgentId = inspectorId,
+        status = status,
+        summary = validated.summary,
+        reason = validated.reason,
+        severity = validated.severity,
+        createdAt = now(),
+        rejectedArtifactId = rejectedArtifact?.id,
+        rejectedArtifactVersion = rejectedArtifact?.version,
     )
 
     private suspend fun persistReview(review: InspectorReview, issues: List<InspectorIssue>) {

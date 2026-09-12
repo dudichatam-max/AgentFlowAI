@@ -17,7 +17,7 @@ import com.agentflow.data.entity.*
         ChatSessionEntity::class, ChatMessageEntity::class, ChatAttachmentEntity::class,
         MissionLoopGuardEntity::class, MissionArtifactPendingEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -46,7 +46,7 @@ abstract class AgentFlowDatabase : RoomDatabase() {
         const val NAME = "agentflow.db"
         fun build(context: Context): AgentFlowDatabase =
             Room.databaseBuilder(context, AgentFlowDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
     }
 }

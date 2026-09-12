@@ -121,8 +121,33 @@ fun AgentMessage.toEntity() = AgentMessageEntity(
     inputTokens, outputTokens, success, errorCode,
 )
 
-fun InspectorReviewEntity.toDomain() = InspectorReview(id, missionId, taskId, inspectorAgentId, ReviewStatus.valueOf(status), summary, reason, Severity.valueOf(severity), createdAt)
-fun InspectorReview.toEntity() = InspectorReviewEntity(id, missionId, taskId, inspectorAgentId, status.name, summary, reason, severity.name, createdAt)
+fun InspectorReviewEntity.toDomain() = InspectorReview(
+    id = id,
+    missionId = missionId,
+    taskId = taskId,
+    inspectorAgentId = inspectorAgentId,
+    status = ReviewStatus.valueOf(status),
+    summary = summary,
+    reason = reason,
+    severity = Severity.valueOf(severity),
+    createdAt = createdAt,
+    rejectedArtifactId = rejectedArtifactId,
+    rejectedArtifactVersion = rejectedArtifactVersion,
+)
+
+fun InspectorReview.toEntity() = InspectorReviewEntity(
+    id = id,
+    missionId = missionId,
+    taskId = taskId,
+    inspectorAgentId = inspectorAgentId,
+    status = status.name,
+    summary = summary,
+    reason = reason,
+    severity = severity.name,
+    createdAt = createdAt,
+    rejectedArtifactId = rejectedArtifactId,
+    rejectedArtifactVersion = rejectedArtifactVersion,
+)
 
 fun InspectorIssueEntity.toDomain() = InspectorIssue(id, reviewId, Severity.valueOf(severity), description, requiredAction, resolved, createdAt, resolvedAt)
 fun InspectorIssue.toEntity() = InspectorIssueEntity(id, reviewId, severity.name, description, requiredAction, resolved, createdAt, resolvedAt)

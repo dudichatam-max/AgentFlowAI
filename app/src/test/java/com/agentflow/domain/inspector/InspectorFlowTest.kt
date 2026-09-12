@@ -90,6 +90,7 @@ class InspectorFlowTest {
         val service = InspectorService(store, reviews, engine, artifacts)
         val id = engine.createMission("p", "t", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
+        val artifact = artifacts.publish(id, "plan", "v1").artifact
         store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
         val rejected = """{"version":1,"decision":"REJECTED","summary":"no","reason":"no","confidence":0.9,"severity":"HIGH","issues":[{"severity":"HIGH","description":"x","requiredAction":"y","category":"ARCHITECTURE"}]}"""
 
@@ -100,6 +101,35 @@ class InspectorFlowTest {
         assertThat(reviews.list(id).count { it.status == ReviewStatus.REJECTED })
             .isAtMost(InspectorReviewLimits.MAX_INSPECTOR_REJECTIONS)
         assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.ESCALATED)
+        assertThat(reviews.list(id).filter { it.status == ReviewStatus.REJECTED }
+            .all { it.rejectedArtifactId == artifact.id && it.rejectedArtifactVersion == artifact.version })
+            .isTrue()
+    }
+
+    @Test
+    fun multipleRejectionsAgainstSameArtifactBlockApproval() = runTest {
+        val (store, _, artifacts) = env()
+        val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("ok") })
+        val reviews = InMemoryReviewCatalog()
+        val service = InspectorService(store, reviews, engine, artifacts)
+        val id = engine.createMission("p", "t", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+        val artifact = artifacts.publish(id, "plan", "v1").artifact
+        store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+
+        repeat(InspectorReviewLimits.MAX_INSPECTOR_REJECTIONS) {
+            service.reject(id, "gap", "fix", "missing detail", "add detail").getOrThrow()
+            store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+        }
+
+        val result = service.approve(id)
+
+        assertThat(result.isFailure).isTrue()
+        assertThat(reviews.list(id).filter { it.status == ReviewStatus.REJECTED })
+            .hasSize(InspectorReviewLimits.MAX_INSPECTOR_REJECTIONS)
+        assertThat(reviews.list(id).filter { it.status == ReviewStatus.REJECTED }
+            .all { it.rejectedArtifactId == artifact.id && it.rejectedArtifactVersion == artifact.version })
+            .isTrue()
     }
 
     @Test
@@ -154,7 +184,7 @@ class InspectorFlowTest {
         engine.startMission(id).getOrThrow()
         artifacts.publish(id, "plan", "v1")
         store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
-        service.reject(id, "gaps", "incomplete", "missing sync", "add sync").getOrThrow()
+        val rejection = service.reject(id, "gaps", "incomplete", "missing sync", "add sync").getOrThrow()
         artifacts.publish(id, "plan", "v2")
         store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
 
@@ -162,6 +192,36 @@ class InspectorFlowTest {
 
         assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.APPROVED)
         assertThat(artifacts.latest(id)!!.version).isEqualTo(2)
+        assertThat(rejection.rejectedArtifactVersion).isEqualTo(1)
+    }
+
+    @Test
+    fun sameMillisecondRejectionWithoutNewArtifactCannotBeApproved() = runTest {
+        val clock = { 1000L }
+        val store = InMemoryMissionStore()
+        val artifacts = ArtifactService(InMemoryArtifactCatalog(), clock)
+        store.agents["ins"] = Agent(
+            "ins", "p", "Inspector", "Inspector", "d", ProviderId.GROQ, "m",
+            capabilities = setOf(com.agentflow.domain.agent.AgentCapability.INSPECT),
+            createdAt = 1, updatedAt = 1,
+        )
+        val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("ok") }, now = clock, artifacts = artifacts)
+        val reviews = InMemoryReviewCatalog()
+        val service = InspectorService(store, reviews, engine, artifacts, now = clock)
+        val id = engine.createMission("p", "same-clock", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+        val v1 = artifacts.publish(id, "plan", "v1").artifact
+        store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+
+        service.reject(id, "gaps", "incomplete", "missing sync", "add sync").getOrThrow()
+        store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+
+        val result = service.approve(id)
+
+        assertThat(result.isFailure).isTrue()
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.REVIEWING)
+        assertThat(reviews.list(id).single().rejectedArtifactId).isEqualTo(v1.id)
+        assertThat(reviews.list(id).single().rejectedArtifactVersion).isEqualTo(v1.version)
     }
 
     @Test

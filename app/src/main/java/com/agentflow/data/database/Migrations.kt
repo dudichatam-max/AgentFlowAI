@@ -53,3 +53,11 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_mission_artifact_pending_missionId ON mission_artifact_pending(missionId)")
     }
 }
+
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE inspector_reviews ADD COLUMN rejectedArtifactId TEXT")
+        db.execSQL("ALTER TABLE inspector_reviews ADD COLUMN rejectedArtifactVersion INTEGER")
+    }
+}

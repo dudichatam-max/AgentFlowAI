@@ -44,8 +44,13 @@ class InspectorService(
             val latestRejection = reviews.list(missionId)
                 .filter { it.status == ReviewStatus.REJECTED }
                 .maxByOrNull { it.createdAt }
-            if (latestRejection != null && artifact.updatedAt <= latestRejection.createdAt) {
-                error("approval requires a new implementation plan after the latest rejection")
+            if (latestRejection != null) {
+                val artifactAtRejection = artifacts.versions(missionId)
+                    .filter { it.updatedAt < latestRejection.createdAt }
+                    .maxByOrNull { it.version }
+                if (artifactAtRejection != null && artifact.id == artifactAtRejection.id) {
+                    error("approval requires a new implementation plan after the latest rejection")
+                }
             }
         }
         val inspector = com.agentflow.domain.agent.AgentDuties.inspector(store.listAgents(mission.projectId))

@@ -34,6 +34,13 @@ class TaskReadinessEvaluatorTest {
     }
 
     @Test
+    fun failedTaskDoesNotBecomeReadyAgain() {
+        val a = task("a", TaskStatus.FAILED)
+        val graph = TaskGraph(listOf(a), emptyList())
+        assertThat(TaskReadinessEvaluator.evaluate(a, graph, MissionStatus.EXECUTING)).isEqualTo(TaskStatus.FAILED)
+    }
+
+    @Test
     fun requiredFailedBlocks() {
         val a = task("a", TaskStatus.FAILED)
         val b = task("b")

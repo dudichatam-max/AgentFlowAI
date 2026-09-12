@@ -64,8 +64,11 @@ class DecisionGateway(
             }
         }
         if (batch.isFailure) {
-            val reason = batch.exceptionOrNull()?.message ?: "engine rejected batch"
-            engine.failMission(missionId, "engine blocked batch: $reason")
+            val error = batch.exceptionOrNull()
+            val reason = error?.message ?: "engine rejected batch"
+            if (error !is com.agentflow.domain.validation.DomainException.PolicyViolation) {
+                engine.failMission(missionId, "engine blocked batch: $reason")
+            }
             return DecisionOutcome(
                 emptyList(),
                 listOf(RejectedAction("batch", reason.removePrefix("Policy violation: "))),

@@ -133,6 +133,38 @@ class InspectorFlowTest {
 
 
     @Test
+    fun approvalAfterRejectionAcceptsNewArtifactWhenClockSharesSameMillisecond() = runTest {
+        val clock = { 1000L }
+        val catalog = InMemoryArtifactCatalog()
+        val artifacts = ArtifactService(catalog, clock)
+        val store = InMemoryMissionStore()
+        store.agents["rd"] = Agent(
+            "rd", "p", "R&D", "orchestrator", "d", ProviderId.GROQ, "m",
+            capabilities = setOf(com.agentflow.domain.agent.AgentCapability.ORCHESTRATE),
+            createdAt = 1, updatedAt = 1,
+        )
+        store.agents["ins"] = Agent(
+            "ins", "p", "Inspector", "inspector", "d", ProviderId.GROQ, "m",
+            capabilities = setOf(com.agentflow.domain.agent.AgentCapability.INSPECT),
+            createdAt = 1, updatedAt = 1,
+        )
+        val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("ok") }, now = clock, artifacts = artifacts)
+        val service = InspectorService(store, InMemoryReviewCatalog(), engine, artifacts, now = clock)
+        val id = engine.createMission("p", "same-clock", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+        artifacts.publish(id, "plan", "v1")
+        store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+        service.reject(id, "gaps", "incomplete", "missing sync", "add sync").getOrThrow()
+        artifacts.publish(id, "plan", "v2")
+        store.missions[id] = store.missions[id]!!.copy(status = MissionStatus.REVIEWING)
+
+        service.approve(id).getOrThrow()
+
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.APPROVED)
+        assertThat(artifacts.latest(id)!!.version).isEqualTo(2)
+    }
+
+    @Test
     fun approvalAfterRejectionRequiresNewArtifact() = runTest {
         val (store, _, artifacts) = env()
         val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("ok") })

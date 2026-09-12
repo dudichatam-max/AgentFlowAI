@@ -7,7 +7,7 @@ import com.agentflow.domain.model.TaskStatus
 
 object TaskReadinessEvaluator {
     fun evaluate(task: Task, graph: TaskGraph, missionStatus: MissionStatus): TaskStatus {
-        if (task.status in setOf(TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.SKIPPED)) return task.status
+        if (task.status in setOf(TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.SKIPPED)) return task.status
         if (missionStatus != MissionStatus.EXECUTING && missionStatus != MissionStatus.RESEARCHING) {
             return if (task.status == TaskStatus.RUNNING) task.status else task.status
         }

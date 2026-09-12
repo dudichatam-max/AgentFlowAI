@@ -48,6 +48,10 @@ object ProviderPolicy {
  */
 object FreeModelCatalog {
 
+    private val groqFree = setOf(
+        "llama-3.1-8b-instant",
+    )
+
     private val geminiFree = setOf(
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
@@ -58,7 +62,7 @@ object FreeModelCatalog {
         val id = modelId.lowercase().removePrefix("models/")
         return when (provider) {
             ProviderType.GEMINI -> if (geminiFree.contains(id)) true else null
-            ProviderType.GROQ -> null
+            ProviderType.GROQ -> if (groqFree.contains(id)) true else null
             ProviderType.OPEN_ROUTER -> when {
                 id.endsWith(":free") -> true
                 id.contains(":free") -> true

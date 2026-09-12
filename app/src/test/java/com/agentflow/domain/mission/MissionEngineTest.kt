@@ -161,8 +161,8 @@ class MissionEngineTest {
         val (baseStore, engine) = seeded()
         val id = engine.createMission("p", "t", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
-        engine.processAction(id, MissionAction.RequestUserInput("writes?", "need policy")).getOrThrow()
-        val taskId = baseStore.tasks.values.first().id
+        val taskId = engine.processAction(id, MissionAction.CreateTask("A", "a", "dev")).getOrThrow().createdTaskId!!
+        engine.processAction(id, MissionAction.RequestUserInput("writes?", "need policy", taskId)).getOrThrow()
         baseStore.tasks[taskId] = baseStore.tasks[taskId]!!.copy(status = TaskStatus.WAITING_FOR_USER)
         val failingStore = FailingTaskUpdateMissionStore(baseStore)
         val failingEngine = MissionEngine(failingStore, { _, _, _, _ -> TaskWorkResult("done") })
@@ -481,9 +481,12 @@ class MissionEngineTest {
         engine.bindPlanIngest { _, _ -> }
         val id = engine.createMission("p", "cancel planner", "d").getOrThrow()
 
-        val result = engine.startMission(id)
-
-        assertThat(result.isFailure).isTrue()
+        try {
+            engine.startMission(id)
+            throw AssertionError("expected planner cancellation")
+        } catch (e: CancellationException) {
+            assertThat(e.message).isEqualTo("planner cancelled")
+        }
         assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.PLANNING)
     }
 
@@ -513,7 +516,7 @@ class MissionEngineTest {
         val result = engine.continueMission(id).getOrThrow()
 
         assertThat(result.workRemaining).isFalse()
-        assertThat(store.tasks.values.single().status).isEqualTo(TaskStatus.COMPLETED)
+        assertThat(store.tasks.values.first { it.title == "Fix finding" }.status).isEqualTo(TaskStatus.COMPLETED)
     }
 }
 

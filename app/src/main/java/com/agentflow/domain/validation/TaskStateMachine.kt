@@ -4,7 +4,7 @@ import com.agentflow.domain.model.TaskStatus
 object TaskStateMachine {
     private val allowed: Map<TaskStatus, Set<TaskStatus>> = mapOf(
         TaskStatus.PENDING to setOf(TaskStatus.READY, TaskStatus.WAITING_FOR_DEPENDENCY, TaskStatus.CANCELLED, TaskStatus.SKIPPED),
-        TaskStatus.READY to setOf(TaskStatus.RUNNING, TaskStatus.WAITING_FOR_DEPENDENCY, TaskStatus.BLOCKED, TaskStatus.CANCELLED, TaskStatus.SKIPPED),
+        TaskStatus.READY to setOf(TaskStatus.RUNNING, TaskStatus.COMPLETED, TaskStatus.WAITING_FOR_DEPENDENCY, TaskStatus.BLOCKED, TaskStatus.CANCELLED, TaskStatus.SKIPPED),
         TaskStatus.WAITING_FOR_DEPENDENCY to setOf(TaskStatus.READY, TaskStatus.BLOCKED, TaskStatus.CANCELLED, TaskStatus.SKIPPED),
         TaskStatus.RUNNING to setOf(TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.RETRYING, TaskStatus.WAITING_FOR_USER, TaskStatus.WAITING_FOR_AGENT, TaskStatus.BLOCKED, TaskStatus.CANCELLED),
         TaskStatus.WAITING_FOR_USER to setOf(TaskStatus.READY, TaskStatus.RUNNING, TaskStatus.CANCELLED, TaskStatus.BLOCKED),

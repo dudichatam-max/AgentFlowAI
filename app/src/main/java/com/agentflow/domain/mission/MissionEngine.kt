@@ -599,7 +599,11 @@ class MissionEngine(
                 if (work.success) {
                     val result = TaskResult(Ids.new(), latestTask.id, latestTask.missionId, work.content, confidence = work.confidence, createdAt = now())
                     val completed = latestTask.copy(status = TaskStatus.COMPLETED, completedAt = now(), updatedAt = now())
-                    store.persistTaskCompletion(completed, result, event(latestTask.missionId, MissionEventType.TASK_COMPLETED, latestTask.title, latestTask.id))
+                    store.transaction {
+                        store.saveResult(result)
+                        store.updateTask(completed)
+                        store.appendEvent(event(latestTask.missionId, MissionEventType.TASK_COMPLETED, latestTask.title, latestTask.id))
+                    }
                     if (latestTask.title.startsWith("Synthesize", ignoreCase = true)) synthesisArtifact = latestMission to work.content
                 } else if (work.failureKind == TaskFailureKind.TRANSIENT && latestTask.retryCount < policy.maxTaskRetries) {
                     updateTask(latestTask.copy(status = TaskStatus.READY, retryCount = latestTask.retryCount + 1, updatedAt = now()))
@@ -641,11 +645,11 @@ class MissionEngine(
         )
         val completedStatus = TaskStateMachine.transition(task.status, TaskStatus.COMPLETED)
         val completed = task.copy(status = completedStatus, completedAt = now(), updatedAt = now())
-        store.persistTaskCompletion(
-            completed,
-            result,
-            event(task.missionId, MissionEventType.TASK_COMPLETED, task.title, task.id),
-        )
+        store.transaction {
+            store.saveResult(result)
+            store.updateTask(completed)
+            store.appendEvent(event(task.missionId, MissionEventType.TASK_COMPLETED, task.title, task.id))
+        }
         refreshReadiness(task.missionId)
     }
 
@@ -837,10 +841,11 @@ class MissionEngine(
             MissionStatus.ESCALATED -> MissionEventType.MISSION_ESCALATED
             else -> MissionEventType.MISSION_STARTED
         }
-        store.persistMissionStatus(
-            updatedMission,
-            event(mission.id, type, eventMessage ?: "${mission.status} → $to"),
-        )
+        val statusEvent = event(mission.id, type, eventMessage ?: "${mission.status} → $to")
+        store.transaction {
+            store.updateMission(updatedMission)
+            store.appendEvent(statusEvent)
+        }
     }
 
     private suspend fun transitionTask(task: Task, to: TaskStatus): Task =

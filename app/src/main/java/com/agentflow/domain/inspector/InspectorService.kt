@@ -160,10 +160,12 @@ class InspectorService(
         if (mission.status !in setOf(MissionStatus.REVIEWING, MissionStatus.REVISION_REQUIRED, MissionStatus.ESCALATED)) {
             error("user override is only available for review or escalation states")
         }
-        store.persistMissionStatus(
-            mission.copy(status = MissionStatus.APPROVED, completedAt = now(), updatedAt = now()),
-            event(missionId, MissionEventType.INSPECTOR_APPROVED, "USER_OVERRIDE_APPROVAL: $reason"),
-        )
+        val approved = mission.copy(status = MissionStatus.APPROVED, completedAt = now(), updatedAt = now())
+        val approvalEvent = event(missionId, MissionEventType.INSPECTOR_APPROVED, "USER_OVERRIDE_APPROVAL: $reason")
+        store.transaction {
+            store.updateMission(approved)
+            store.appendEvent(approvalEvent)
+        }
         }
     }
 

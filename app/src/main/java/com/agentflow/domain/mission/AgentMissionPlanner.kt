@@ -82,7 +82,7 @@ class AgentMissionPlanner(
         const val PLAN_CONTRACT = """
 
 Return ONLY JSON matching AgentDecisionEnvelope version 1.
-Allowed action types: CREATE_TASK, ASSIGN_TASK, ADD_DEPENDENCY, REQUEST_USER_INPUT, REQUEST_MORE_RESEARCH, CONTINUE.
+Allowed action types: CREATE_TASK, ASSIGN_TASK, ADD_DEPENDENCY, REQUEST_USER_INPUT, REQUEST_MORE_RESEARCH, PAUSE_MISSION, CONTINUE.
 Do not invent agent ids. Use only ids listed under AVAILABLE AGENTS.
 Do not claim execution authority. You propose; the engine decides.
 """

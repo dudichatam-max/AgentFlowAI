@@ -92,6 +92,7 @@ object ContractMapper {
                 content = requireBound(dto.content, "content", ContractLimits.MAX_CONTENT),
             )
             ProposedActionType.CONTINUE -> MissionAction.Continue
+            ProposedActionType.PAUSE_MISSION -> MissionAction.PauseMission
         }
     }
 

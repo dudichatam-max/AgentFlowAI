@@ -82,6 +82,11 @@ class MissionPersistenceConsistencyTest {
                     block()
                     throw IllegalStateException("simulated crash")
                 }
+            override suspend fun persistMissionStatus(mission: Mission, completionEvent: MissionEvent) =
+                transaction {
+                    updateMission(mission)
+                    appendEvent(completionEvent)
+                }
         }
 
         val updated = mission.copy(status = MissionStatus.FAILED, updatedAt = 9)
@@ -102,6 +107,12 @@ class MissionPersistenceConsistencyTest {
                 base.transaction {
                     block()
                     throw IllegalStateException("simulated crash")
+                }
+            override suspend fun persistTaskCompletion(task: Task, result: TaskResult, completionEvent: MissionEvent) =
+                transaction {
+                    saveResult(result)
+                    updateTask(task)
+                    appendEvent(completionEvent)
                 }
         }
         val result = TaskResult("r1", "t1", "m1", "done", createdAt = 4)

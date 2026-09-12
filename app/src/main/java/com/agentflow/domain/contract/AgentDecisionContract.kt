@@ -73,4 +73,5 @@ enum class ProposedActionType {
     REQUEST_REVIEW,
     CREATE_ARTIFACT,
     CONTINUE,
+    PAUSE_MISSION,
 }

@@ -12,7 +12,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class MissionPersistenceConsistencyTest {
-    private val mission = Mission("m1", "p1", "title", "description", MissionStatus.EXECUTING, 1, 2, "user")
+    private val mission = Mission("m1", "p1", "title", "description", MissionStatus.EXECUTING, 1, 2, createdBy = "user")
     private val task = Task("t1", "m1", null, com.agentflow.domain.model.CreatedByType.USER, "user", "a1", "task", "desc", TaskStatus.COMPLETED, com.agentflow.domain.model.Priority.NORMAL, null, null, 3, 0, 1, 2)
 
     @Test

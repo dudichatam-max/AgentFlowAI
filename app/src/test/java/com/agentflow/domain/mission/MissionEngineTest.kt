@@ -2,6 +2,8 @@ package com.agentflow.domain.mission
 
 import com.agentflow.domain.agent.AgentCapability
 import com.agentflow.domain.model.Agent
+import com.agentflow.domain.model.CreatedByType
+import com.agentflow.domain.model.Task
 import com.agentflow.domain.model.MissionStatus
 import com.agentflow.domain.model.MissionEventType
 import com.agentflow.domain.model.Priority
@@ -355,7 +357,7 @@ class MissionEngineTest {
         store.agents["dev"] = agent("dev", "Developer")
         val started = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()
-        val engine = MissionEngine(store) { task, _, _, _ ->
+        val engine = MissionEngine(store, { task, _, _, _ ->
             started.complete(Unit)
             try {
                 CompletableDeferred<Unit>().await()
@@ -364,7 +366,7 @@ class MissionEngineTest {
                 cancelled.complete(Unit)
                 throw e
             }
-        }
+        })
         val id = engine.createMission("p", "cancel", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
         val taskId = engine.processAction(id, MissionAction.CreateTask("A", "a", "dev")).getOrThrow().createdTaskId!!
@@ -385,11 +387,11 @@ class MissionEngineTest {
         store.agents["dev"] = agent("dev", "Developer")
         val started = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()
-        val engine = MissionEngine(store) { _, _, _, _ ->
+        val engine = MissionEngine(store, { _, _, _, _ ->
             started.complete(Unit)
             try { CompletableDeferred<Unit>().await(); TaskWorkResult("never") }
             catch (e: CancellationException) { cancelled.complete(Unit); throw e }
-        }
+        })
         val id = engine.createMission("p", "pause", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
         val taskId = engine.processAction(id, MissionAction.CreateTask("A", "a", "dev")).getOrThrow().createdTaskId!!
@@ -410,12 +412,12 @@ class MissionEngineTest {
         store.agents["dev"] = agent("dev", "Developer")
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        val engine = MissionEngine(store) { _, _, _, _ ->
+        val engine = MissionEngine(store, { _, _, _, _ ->
             started.complete(Unit)
             try { CompletableDeferred<Unit>().await() }
             catch (_: CancellationException) { withContext(NonCancellable) { release.await() } }
             TaskWorkResult("late")
-        }
+        })
         val id = engine.createMission("p", "stale", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
         val taskId = engine.processAction(id, MissionAction.CreateTask("A", "a", "dev")).getOrThrow().createdTaskId!!
@@ -433,7 +435,7 @@ class MissionEngineTest {
     fun failedDependencyBlocksDependentAndFailsMission() = runTest {
         val store = InMemoryMissionStore()
         store.agents["dev"] = agent("dev", "Developer")
-        val engine = MissionEngine(store) { _, _, _, _ -> TaskWorkResult("ok") }
+        val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("ok") })
         val id = engine.createMission("p", "failure", "d").getOrThrow()
         engine.startMission(id).getOrThrow()
         val a = engine.processAction(id, MissionAction.CreateTask("A", "a", "dev")).getOrThrow().createdTaskId!!
@@ -500,8 +502,8 @@ class MissionEngineTest {
     @Test
     fun continueMissionResumesRevisionRequiredWork() = runTest {
         val store = InMemoryMissionStore()
-        store.agents["rd"] = testAgent("rd", "R&D", setOf(AgentCapability.ORCHESTRATE, AgentCapability.SYNTHESIZE))
-        store.agents["dev"] = testAgent("dev", "Dev", setOf(AgentCapability.CODE))
+        store.agents["rd"] = agent("rd", "R&D", capabilities = setOf(AgentCapability.ORCHESTRATE, AgentCapability.SYNTHESIZE))
+        store.agents["dev"] = agent("dev", "Dev", capabilities = setOf(AgentCapability.CODE))
         val engine = MissionEngine(store, { _, _, _, _ -> TaskWorkResult("fixed") })
         val id = engine.createMission("p", "revision", "d").getOrThrow()
         engine.startMission(id).getOrThrow()

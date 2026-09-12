@@ -3,6 +3,7 @@ package com.agentflow.domain.provider
 import com.agentflow.domain.ai.AIMessage
 import com.agentflow.domain.ai.AIMessageRole
 import com.agentflow.domain.ai.AIRequest
+import com.agentflow.domain.ai.AIStreamEvent
 import com.agentflow.domain.retry.RetryPolicy
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CancellationException

@@ -28,7 +28,7 @@ private fun reconcileRemovesOrphansButKeepsReferencedFiles() {
         val store = AtomicArtifactFileStore(root)
         store.writeAtomic("kept", "keep")
         store.writeAtomic("orphan", "remove")
-        Files.writeString(root.resolve(".artifact-tmp-orphan" ).toPath(), "tmp")
+        root.resolve(".artifact-tmp-orphan").writeText("tmp")
 
         val removed = store.reconcile(setOf("kept"))
 

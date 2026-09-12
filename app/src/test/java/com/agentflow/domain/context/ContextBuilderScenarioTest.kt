@@ -88,7 +88,7 @@ class ContextBuilderScenarioTest {
             projectId = "p",
             agentId = null,
             name = "spec.pdf",
-            type = ReferenceType.DOCUMENT,
+            type = ReferenceType.FILE,
             path = "spec.pdf",
             contentHash = null,
             sizeBytes = 8,

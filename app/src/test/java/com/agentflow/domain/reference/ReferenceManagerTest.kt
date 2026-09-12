@@ -2,6 +2,7 @@ package com.agentflow.domain.reference
 
 import com.agentflow.domain.model.InclusionMode
 import com.agentflow.domain.model.Reference
+import com.agentflow.domain.model.ReferenceType
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule

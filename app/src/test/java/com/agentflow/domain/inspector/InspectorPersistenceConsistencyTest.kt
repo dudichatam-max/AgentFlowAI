@@ -8,6 +8,7 @@ import com.agentflow.domain.model.Mission
 import com.agentflow.domain.model.MissionEventType
 import com.agentflow.domain.model.MissionStatus
 import com.agentflow.domain.model.ProviderId
+import com.agentflow.domain.model.InspectorReview
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Test

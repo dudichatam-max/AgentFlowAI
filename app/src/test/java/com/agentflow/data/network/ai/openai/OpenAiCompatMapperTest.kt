@@ -22,15 +22,15 @@ class OpenAiCompatMapperTest {
     fun groqUsesReasoningEffortInsteadOfUnsupportedReasoningObject() {
         val mapped = OpenAiCompatMapper.toRequest(ProviderType.GROQ, request)
         val encoded = json.encodeToString(OpenAiChatRequest.serializer(), mapped)
-        assertThat(encoded).contains(""reasoning_effort":"high"")
-        assertThat(encoded).doesNotContain(""reasoning":")
+        assertThat(encoded).contains("\"reasoning_effort\":\"high\"")
+        assertThat(encoded).doesNotContain("\"reasoning\":")
     }
 
     @Test
     fun openRouterKeepsReasoningObject() {
         val mapped = OpenAiCompatMapper.toRequest(ProviderType.OPEN_ROUTER, request)
         val encoded = json.encodeToString(OpenAiChatRequest.serializer(), mapped)
-        assertThat(encoded).contains(""reasoning":{"effort":"high"}")
+        assertThat(encoded).contains("\"reasoning\":{\"effort\":\"high\"}")
         assertThat(mapped.reasoningEffort).isNull()
     }
 }

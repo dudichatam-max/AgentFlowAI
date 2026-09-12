@@ -1,7 +1,7 @@
 # AgentFlow AI — Final Hardening Audit v9
 
 ## Scope
-
+ 
 This pass hardens persistence boundaries identified after the v8 UI/E2E audit. The focus is on preventing partially committed mission state during cancellation, user-input completion, and Inspector approval decisions.
 
 ## Fixes in v9

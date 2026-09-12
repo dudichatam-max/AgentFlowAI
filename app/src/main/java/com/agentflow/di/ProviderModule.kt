@@ -12,6 +12,8 @@ import com.agentflow.data.repository.ProviderRepositoryImpl
 import com.agentflow.data.security.AndroidSecureApiKeyStore
 import com.agentflow.data.security.SecureApiKeyStore
 import com.agentflow.domain.provider.AIProvider
+import com.agentflow.domain.provider.InMemoryModelRegistry
+import com.agentflow.domain.provider.ModelRegistry
 import com.agentflow.domain.provider.ProviderManager
 import com.agentflow.domain.provider.ProviderType
 import com.agentflow.domain.retry.RetryPolicy
@@ -45,4 +47,6 @@ class ProviderModule(
         retryPolicy = RetryPolicy(),
         freeOnly = { true },
     )
+
+    val modelRegistry: ModelRegistry = InMemoryModelRegistry(manager)
 }

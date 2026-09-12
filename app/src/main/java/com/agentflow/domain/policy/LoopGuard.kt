@@ -1,7 +1,7 @@
 package com.agentflow.domain.policy
 
 import com.agentflow.domain.mission.MissionStore
-import com.agentflow.domain.model.MissionAction
+import com.agentflow.domain.mission.MissionAction
 
 
 data class LoopGuardLimits(

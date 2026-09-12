@@ -115,7 +115,7 @@ class ProviderManagerTest {
             override suspend fun generate(request: AIRequest) = FakeAIProvider.ok(ProviderType.GEMINI)
             override suspend fun listModels() = ProviderResult.Success(emptyList<ProviderModel>())
             override suspend fun testConnection(model: String?) = ProviderResult.Success(ProviderHealth(ProviderType.GEMINI, model, true, 1, null, 0))
-            override fun stream(request: AIRequest) = flow {
+            override fun stream(request: AIRequest) = flow<AIStreamEvent> {
                 throw CancellationException("cancelled")
             }
         }

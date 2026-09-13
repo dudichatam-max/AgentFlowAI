@@ -456,8 +456,11 @@ class MissionEngine(
             }
             MissionAction.RequestSynthesis -> createSynthesis(mission)
             MissionAction.RequestReview -> {
-                if (!hasRequiredArtifact(mission.id)) {
-                    return createSynthesis(mission)
+                val reviewGateFailure = reviewGateFailureReason(mission.id)
+                if (reviewGateFailure != null) {
+                    throw DomainException.PolicyViolation(
+                        "request review denied: $reviewGateFailure",
+                    )
                 }
                 setStatus(mission, MissionStatus.REVIEWING)
                 MissionActionResult(true, "review")
@@ -712,6 +715,36 @@ class MissionEngine(
                 updateTask(task.copy(status = next, updatedAt = now()))
             }
         }
+    }
+
+    private suspend fun reviewGateFailureReason(missionId: String): String? {
+        val tasks = store.listTasks(missionId)
+
+        if (tasks.isEmpty()) {
+            return "no mission tasks exist"
+        }
+
+        val incompleteTasks = tasks.filter { it.status != TaskStatus.COMPLETED }
+        if (incompleteTasks.isNotEmpty()) {
+            val details = incompleteTasks.joinToString(", ") {
+                "${it.title}:${it.status}"
+            }
+            return "required tasks incomplete: $details"
+        }
+
+        val synthesisComplete = tasks.any {
+            it.title.equals("Synthesize implementation strategy", ignoreCase = true) &&
+                it.status == TaskStatus.COMPLETED
+        }
+        if (!synthesisComplete) {
+            return "synthesis is not completed"
+        }
+
+        if (!hasRequiredArtifact(missionId)) {
+            return "implementation plan artifact is missing"
+        }
+
+        return null
     }
 
     private suspend fun maybeFinish(missionId: String) {

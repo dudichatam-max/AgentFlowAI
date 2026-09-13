@@ -503,6 +503,137 @@ class MissionEngineTest {
     }
 
     @Test
+    fun requestReviewIsRejectedWhileRequiredTaskIsIncomplete() = runTest {
+        val (store, engine) = seeded()
+        val id = engine.createMission("p", "review gate", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+
+        engine.processAction(
+            id,
+            MissionAction.CreateTask(
+                "Research",
+                "research",
+                "dev",
+            ),
+        ).getOrThrow()
+        engine.processAction(
+            id,
+            MissionAction.CreateArtifact(
+                type = com.agentflow.domain.model.ArtifactType.IMPLEMENTATION_PLAN,
+                name = "Implementation plan",
+                content = "plan",
+            ),
+        ).getOrThrow()
+
+        val result = engine.processAction(id, MissionAction.RequestReview)
+
+        assertThat(result.exceptionOrNull())
+            .isInstanceOf(DomainException.PolicyViolation::class.java)
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.EXECUTING)
+    }
+
+    @Test
+    fun requestReviewIsRejectedWhenSynthesisIsIncomplete() = runTest {
+        val (store, engine) = seeded()
+        val id = engine.createMission("p", "review gate", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+
+        engine.processAction(
+            id,
+            MissionAction.CreateTask("Research", "research", "dev"),
+        ).getOrThrow().createdTaskId!!.let { taskId ->
+            engine.processAction(id, MissionAction.CompleteTask(taskId, "research done")).getOrThrow()
+        }
+
+        engine.processAction(
+            id,
+            MissionAction.CreateTask(
+                "Synthesize implementation strategy",
+                "synthesis",
+                "rd",
+                Priority.HIGH,
+            ),
+        ).getOrThrow()
+        engine.processAction(
+            id,
+            MissionAction.CreateArtifact(
+                type = com.agentflow.domain.model.ArtifactType.IMPLEMENTATION_PLAN,
+                name = "Implementation plan",
+                content = "plan",
+            ),
+        ).getOrThrow()
+
+        val result = engine.processAction(id, MissionAction.RequestReview)
+
+        assertThat(result.exceptionOrNull())
+            .isInstanceOf(DomainException.PolicyViolation::class.java)
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.EXECUTING)
+    }
+
+    @Test
+    fun requestReviewIsRejectedWhenImplementationPlanArtifactIsMissing() = runTest {
+        val (store, engine) = seeded()
+        val id = engine.createMission("p", "review gate", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+
+        val researchId = engine.processAction(
+            id,
+            MissionAction.CreateTask("Research", "research", "dev"),
+        ).getOrThrow().createdTaskId!!
+        engine.processAction(id, MissionAction.CompleteTask(researchId, "research done")).getOrThrow()
+
+        val synthesisId = engine.processAction(
+            id,
+            MissionAction.CreateTask(
+                "Synthesize implementation strategy",
+                "synthesis",
+                "rd",
+                Priority.HIGH,
+            ),
+        ).getOrThrow().createdTaskId!!
+        store.tasks[synthesisId] = store.tasks[synthesisId]!!.copy(
+            status = TaskStatus.COMPLETED,
+            completedAt = 1,
+        )
+
+        val result = engine.processAction(id, MissionAction.RequestReview)
+
+        assertThat(result.exceptionOrNull())
+            .isInstanceOf(DomainException.PolicyViolation::class.java)
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.EXECUTING)
+    }
+
+    @Test
+    fun requestReviewIsAllowedOnlyAfterAllRequiredWorkAndSynthesisAreComplete() = runTest {
+        val (store, engine) = seeded()
+        val id = engine.createMission("p", "review gate", "d").getOrThrow()
+        engine.startMission(id).getOrThrow()
+
+        val researchId = engine.processAction(
+            id,
+            MissionAction.CreateTask("Research", "research", "dev"),
+        ).getOrThrow().createdTaskId!!
+        engine.processAction(id, MissionAction.CompleteTask(researchId, "research done")).getOrThrow()
+
+        val synthesisId = engine.processAction(
+            id,
+            MissionAction.CreateTask(
+                "Synthesize implementation strategy",
+                "synthesis",
+                "rd",
+                Priority.HIGH,
+            ),
+        ).getOrThrow().createdTaskId!!
+        engine.processAction(id, MissionAction.CompleteTask(synthesisId, "synthesis done")).getOrThrow()
+
+        val result = engine.processAction(id, MissionAction.RequestReview)
+
+        assertThat(result.isSuccess).isTrue()
+        assertThat(store.missions[id]!!.status).isEqualTo(MissionStatus.REVIEWING)
+        assertThat(engine.hasRequiredArtifact(id)).isTrue()
+    }
+
+    @Test
     fun continueMissionResumesRevisionRequiredWork() = runTest {
         val store = InMemoryMissionStore()
         store.agents["rd"] = agent("rd", "R&D", capabilities = setOf(AgentCapability.ORCHESTRATE, AgentCapability.SYNTHESIZE))
